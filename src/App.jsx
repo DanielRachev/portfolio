@@ -60,6 +60,15 @@ function CameraManager({ targetRef, isReturning, onReturnComplete }) {
   return null;
 }
 
+function Orbit({ radius }) {
+  return (
+    <mesh rotation-x={Math.PI / 2}>
+      <torusGeometry args={[radius, 0.015, 16, 100]} />
+      <meshBasicMaterial color="#333" transparent opacity={0.5} />
+    </mesh>
+  );
+}
+
 const Planet = React.forwardRef(({
   id,
   color,
@@ -70,6 +79,7 @@ const Planet = React.forwardRef(({
   setAnimationSpeed,
   onPlanetClick,
   shaderColors,
+  hasRings,
 }, ref) => {
   const orbitAngle = useRef(Math.random() * Math.PI * 2);
   const [isHovered, setHovered] = useState(false);
@@ -131,6 +141,18 @@ const Planet = React.forwardRef(({
           side={THREE.BackSide}
         />
       </mesh>
+
+      {hasRings && (
+        <mesh rotation-x={Math.PI / 2}>
+          <ringGeometry args={[size * 1.2, size * 1.8, 64]} />
+          <meshStandardMaterial
+            color="lightblue"
+            opacity={0.4}
+            transparent
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      )}
     </group>
   );
 });
@@ -200,7 +222,7 @@ function Stars({ count = 5000 }) {
         />
       </bufferGeometry>
       <pointsMaterial
-        size={0.45}
+        size={0.35}
         color="#ffffff"
         transparent
         opacity={0.8}
@@ -219,7 +241,8 @@ const projects = [
     orbitalRadius: 10,
     orbitalSpeed: 0.5,
     projectInfo: 'Project A',
-    shaderColors: ['#ff6600', '#ffaa00', '#993300'] // A fiery, orange planet
+    shaderColors: ['#ff6600', '#ffaa00', '#993300'], // A fiery, orange planet
+    hasRings: true,
   },
   {
     id: 2,
@@ -227,7 +250,8 @@ const projects = [
     orbitalRadius: 16,
     orbitalSpeed: 0.3,
     projectInfo: 'Project B',
-    shaderColors: ['#0066ff', '#00aaff', '#ffffff'] // An icy, blue/white planet
+    shaderColors: ['#0066ff', '#00aaff', '#ffffff'], // An icy, blue/white planet
+    hasRings: true,
   },
   {
     id: 3,
@@ -235,7 +259,8 @@ const projects = [
     orbitalRadius: 22,
     orbitalSpeed: 0.2,
     projectInfo: 'Project C',
-    shaderColors: ['#ff0000', '#990000', '#ff6666'] // A classic red planet
+    shaderColors: ['#ff0000', '#990000', '#ff6666'], // A classic red planet
+    hasRings: false,
   },
 ];
 
@@ -303,6 +328,7 @@ export default function App() {
             onPlanetClick={handlePlanetClick}
           />
         ))}
+        {projects.map(p => <Orbit key={`orbit_${p.id}`} radius={p.orbitalRadius} />)}
 
         <EffectComposer>
           <Bloom
