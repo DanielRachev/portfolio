@@ -161,6 +161,54 @@ function Sun() {
   );
 }
 
+function Stars({ count = 5000 }) {
+  const ref = useRef();
+
+  const positions = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count * 3; i++) {
+      const r = 200 * Math.cbrt(Math.random());
+      const theta = Math.random() * 2 * Math.PI;
+      const phi = Math.acos(2 * Math.random() - 1);
+      
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.sin(phi) * Math.sin(theta);
+      const z = r * Math.cos(phi);
+      
+      pos[i * 3 + 0] = x;
+      pos[i * 3 + 1] = y;
+      pos[i * 3 + 2] = z;
+    }
+    return pos;
+  }, [count]);
+
+  // Slowly rotate the starfield for a dynamic effect
+  useFrame((state, delta) => {
+    ref.current.rotation.y += delta * 0.01;
+    ref.current.rotation.x += delta * 0.005;
+  });
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={positions.length / 3}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial 
+        size={0.45} 
+        color="#ffffff" 
+        transparent 
+        opacity={0.8}
+        sizeAttenuation={true}
+      />
+    </points>
+  );
+}
+
 // --- Main App Component ---
 
 const projects = [
@@ -239,6 +287,8 @@ export default function App() {
           isReturning={isReturning}
           onReturnComplete={handleReturnComplete}
         />
+
+        <Stars />
 
         <Sun />
 
