@@ -1,8 +1,9 @@
 import React, { useRef, useState, useMemo } from 'react';
 
 import * as THREE from 'three';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
 import { AnimatePresence } from 'framer-motion';
 
@@ -170,11 +171,11 @@ function Stars({ count = 5000 }) {
       const r = 200 * Math.cbrt(Math.random());
       const theta = Math.random() * 2 * Math.PI;
       const phi = Math.acos(2 * Math.random() - 1);
-      
+
       const x = r * Math.sin(phi) * Math.cos(theta);
       const y = r * Math.sin(phi) * Math.sin(theta);
       const z = r * Math.cos(phi);
-      
+
       pos[i * 3 + 0] = x;
       pos[i * 3 + 1] = y;
       pos[i * 3 + 2] = z;
@@ -198,10 +199,10 @@ function Stars({ count = 5000 }) {
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial 
-        size={0.45} 
-        color="#ffffff" 
-        transparent 
+      <pointsMaterial
+        size={0.45}
+        color="#ffffff"
+        transparent
         opacity={0.8}
         sizeAttenuation={true}
       />
@@ -302,6 +303,15 @@ export default function App() {
             onPlanetClick={handlePlanetClick}
           />
         ))}
+
+        <EffectComposer>
+          <Bloom
+            intensity={1.5}
+            luminanceThreshold={0.5}
+            luminanceSmoothing={0.9}
+            height={300}
+          />
+        </EffectComposer>
       </Canvas>
     </>
   );
