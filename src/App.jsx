@@ -1,0 +1,258 @@
+import React, { useRef, useState, useMemo } from 'react';
+
+import * as THREE from 'three';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+
+import { AnimatePresence } from 'framer-motion';
+
+import ProjectPanel from './ProjectPanel';
+
+import sunVertexShader from './shaders/sun.vertex.glsl';
+import sunFragmentShader from './shaders/sun.fragment.glsl';
+
+import planetVertexShader from './shaders/planet.vertex.glsl';
+import planetFragmentShader from './shaders/planet.fragment.glsl';
+
+// --- Helper Components ---
+
+function CameraManager({ targetRef, isReturning, onReturnComplete }) {
+  const { camera } = useThree();
+  const defaultCameraPosition = useMemo(() => new THREE.Vector3(0, 20, 25), []);
+
+  const targetPosition = useMemo(() => new THREE.Vector3(), []);
+  const cameraPosition = useMemo(() => new THREE.Vector3(), []);
+  const cameraLookAt = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(() => {
+    if (targetRef && targetRef.current) {
+      targetRef.current.getWorldPosition(targetPosition);
+
+      // Calculate the final camera position
+      const horizontalShift = 2;
+      const offset = new THREE.Vector3(4, 0.5, 3);
+
+      cameraPosition
+        .copy(targetPosition)
+        .add(offset);
+      cameraPosition.x += horizontalShift;
+
+      // The camera should look at a point slightly to the right of the planet
+      cameraLookAt.copy(targetPosition);
+      cameraLookAt.x += horizontalShift;
+
+      // Smoothly move the camera
+      camera.position.lerp(cameraPosition, 0.05);
+      camera.lookAt(cameraLookAt);
+
+    } else if (isReturning) {
+      camera.position.lerp(defaultCameraPosition, 0.05);
+      camera.lookAt(0, 0, 0);
+
+      // If the camera is close enough to the default position, stop the animation
+      if (camera.position.distanceTo(defaultCameraPosition) < 0.9) {
+        onReturnComplete();
+      }
+    }
+  });
+
+  return null;
+}
+
+const Planet = React.forwardRef(({
+  id,
+  color,
+  size,
+  orbitalRadius,
+  orbitalSpeed,
+  animationSpeed,
+  setAnimationSpeed,
+  onPlanetClick,
+  shaderColors,
+}, ref) => {
+  const orbitAngle = useRef(Math.random() * Math.PI * 2);
+  const [isHovered, setHovered] = useState(false);
+
+  const materialRef = useRef();
+
+  useFrame((state, delta) => {
+    // Orbital motion (stops if animationSpeed is 0)
+    orbitAngle.current += delta * orbitalSpeed * animationSpeed;
+    ref.current.position.x = Math.sin(orbitAngle.current) * orbitalRadius;
+    ref.current.position.z = Math.cos(orbitAngle.current) * orbitalRadius;
+
+    // Self-rotation (continues regardless of animationSpeed)
+    ref.current.rotation.y += 0.2 * delta;
+
+    // Animate the shader
+    materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
+  });
+
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uColor1: { value: new THREE.Color(shaderColors[0]) },
+    uColor2: { value: new THREE.Color(shaderColors[1]) },
+    uColor3: { value: new THREE.Color(shaderColors[2]) },
+  }), [shaderColors]);
+
+  return (
+    <group ref={ref}>
+      {/* Planet Mesh */}
+      <mesh
+        // Keep the event handlers on the main planet mesh
+        onClick={() => onPlanetClick(id)}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          setHovered(true);
+          if (animationSpeed !== 0) setAnimationSpeed(0.1); // Only slow down if not focused
+        }}
+        onPointerOut={() => {
+          setHovered(false);
+          if (animationSpeed !== 0) setAnimationSpeed(1.0); // Only speed up if not focused
+        }}
+      >
+        <sphereGeometry args={[size, 64, 64]} />
+        <shaderMaterial
+          ref={materialRef}
+          vertexShader={planetVertexShader}
+          fragmentShader={planetFragmentShader}
+          uniforms={uniforms}
+        />
+      </mesh>
+
+      {/* Atmosphere Mesh */}
+      <mesh scale={[1.05, 1.05, 1.05]}>
+        <sphereGeometry args={[size, 64, 64]} />
+        <meshStandardMaterial
+          color={shaderColors[0]}
+          transparent
+          opacity={0.2}
+          side={THREE.BackSide}
+        />
+      </mesh>
+    </group>
+  );
+});
+
+function Sun() {
+  const materialRef = useRef();
+
+  useFrame(({ clock }) => {
+    materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
+  });
+
+  const uniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+    }),
+    []
+  );
+
+  return (
+    <mesh>
+      <sphereGeometry args={[2.5, 64, 64]} />
+      <shaderMaterial
+        ref={materialRef}
+        vertexShader={sunVertexShader}
+        fragmentShader={sunFragmentShader}
+        uniforms={uniforms}
+      />
+    </mesh>
+  );
+}
+
+// --- Main App Component ---
+
+const projects = [
+  {
+    id: 1,
+    size: 1,
+    orbitalRadius: 10,
+    orbitalSpeed: 0.5,
+    projectInfo: 'Project A',
+    shaderColors: ['#ff6600', '#ffaa00', '#993300'] // A fiery, orange planet
+  },
+  {
+    id: 2,
+    size: 0.8,
+    orbitalRadius: 16,
+    orbitalSpeed: 0.3,
+    projectInfo: 'Project B',
+    shaderColors: ['#0066ff', '#00aaff', '#ffffff'] // An icy, blue/white planet
+  },
+  {
+    id: 3,
+    size: 1.2,
+    orbitalRadius: 22,
+    orbitalSpeed: 0.2,
+    projectInfo: 'Project C',
+    shaderColors: ['#ff0000', '#990000', '#ff6666'] // A classic red planet
+  },
+];
+
+
+export default function App() {
+  const [animationSpeed, setAnimationSpeed] = useState(1.0);
+  const [focusedPlanet, setFocusedPlanet] = useState(null);
+  const [isReturning, setIsReturning] = useState(false);
+
+  const planetRefs = useMemo(() =>
+    Array(projects.length).fill().map(() => React.createRef()),
+    []
+  );
+
+  const handlePlanetClick = (id) => {
+    if (isReturning) setIsReturning(false);
+
+    const project = projects.find(p => p.id === id);
+    setFocusedPlanet(project);
+    setAnimationSpeed(0);
+  };
+
+  const handleClosePanel = () => {
+    setFocusedPlanet(null);
+    setAnimationSpeed(1.0);
+    setIsReturning(true);
+  };
+
+  const handleReturnComplete = () => {
+    setIsReturning(false);
+  };
+
+  const focusedPlanetRef = focusedPlanet ? planetRefs[projects.findIndex(p => p.id === focusedPlanet.id)] : null;
+
+  return (
+    <>
+      <AnimatePresence>
+        {focusedPlanet && (
+          <ProjectPanel project={focusedPlanet} onClose={handleClosePanel} />
+        )}
+      </AnimatePresence>
+      <Canvas camera={{ position: [0, 20, 25], fov: 45 }}>
+        <ambientLight intensity={0.2} />
+        <pointLight color="white" intensity={350} position={[0, 0, 0]} />
+
+        <OrbitControls enabled={!focusedPlanet && !isReturning} />
+
+        <CameraManager
+          targetRef={focusedPlanetRef}
+          isReturning={isReturning}
+          onReturnComplete={handleReturnComplete}
+        />
+
+        <Sun />
+
+        {projects.map((project, index) => (
+          <Planet
+            key={project.id}
+            ref={planetRefs[index]}
+            {...project}
+            animationSpeed={animationSpeed}
+            setAnimationSpeed={setAnimationSpeed}
+            onPlanetClick={handlePlanetClick}
+          />
+        ))}
+      </Canvas>
+    </>
+  );
+}
