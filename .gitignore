@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Licensed source assets and the local packaging key
+private-assets/
+.planet-key
+*.glb
+*.gltf
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

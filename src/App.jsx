@@ -1,7 +1,7 @@
 import React, { useRef, useState, useMemo } from 'react';
 
 import * as THREE from 'three';
-import { OrbitControls, useGLTF } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
@@ -11,10 +11,11 @@ import ProjectPanel from './ProjectPanel';
 
 import sunVertexShader from './shaders/sun.vertex.glsl';
 import sunFragmentShader from './shaders/sun.fragment.glsl';
+import { useEncryptedGLTF } from './loaders/useEncryptedGLTF';
 
 // --- Helper Components ---
 
-const PLANET_ASSET_ROOT = `${import.meta.env.BASE_URL}models/planets`;
+const PLANET_ASSET_ROOT = `${import.meta.env.BASE_URL}assets/planets`;
 
 function CameraManager({ targetRef, isReturning, onReturnComplete }) {
   const { camera } = useThree();
@@ -81,7 +82,7 @@ const Planet = React.forwardRef(({
   const orbitAngle = useRef(Math.random() * Math.PI * 2);
   const visualRef = useRef();
   const [isHovered, setHovered] = useState(false);
-  const { scene } = useGLTF(modelPath);
+  const { scene } = useEncryptedGLTF(modelPath);
 
   const { model, modelScale } = useMemo(() => {
     const clonedModel = scene.clone(true);
@@ -228,7 +229,7 @@ const projects = [
     id: 1,
     orbitalRadius: 10,
     orbitalSpeed: 0.5,
-    modelPath: `${PLANET_ASSET_ROOT}/Planet_30.glb`,
+    modelPath: `${PLANET_ASSET_ROOT}/p-c7b5e103.planet`,
     visualRadius: 1.8,
     projectInfo: 'Project A',
   },
@@ -236,7 +237,7 @@ const projects = [
     id: 2,
     orbitalRadius: 16,
     orbitalSpeed: 0.3,
-    modelPath: `${PLANET_ASSET_ROOT}/Planet_24.glb`,
+    modelPath: `${PLANET_ASSET_ROOT}/p-a91f2d4c.planet`,
     visualRadius: 1.45,
     projectInfo: 'Project B',
   },
@@ -244,13 +245,13 @@ const projects = [
     id: 3,
     orbitalRadius: 22,
     orbitalSpeed: 0.2,
-    modelPath: `${PLANET_ASSET_ROOT}/Planet_45.glb`,
+    modelPath: `${PLANET_ASSET_ROOT}/p-e48279ad.planet`,
     visualRadius: 1.2,
     projectInfo: 'Project C',
   },
 ];
 
-projects.forEach(({ modelPath }) => useGLTF.preload(modelPath));
+projects.forEach(({ modelPath }) => useEncryptedGLTF.preload(modelPath));
 
 
 export default function App() {

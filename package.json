@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "assets:setup": "node scripts/package-planets.mjs --generate-key",
+    "assets:package": "node scripts/package-planets.mjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
