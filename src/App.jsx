@@ -1,7 +1,7 @@
 import React, { useRef, useState, useMemo } from 'react';
 
 import * as THREE from 'three';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
@@ -12,10 +12,9 @@ import ProjectPanel from './ProjectPanel';
 import sunVertexShader from './shaders/sun.vertex.glsl';
 import sunFragmentShader from './shaders/sun.fragment.glsl';
 
-import planetVertexShader from './shaders/planet.vertex.glsl';
-import planetFragmentShader from './shaders/planet.fragment.glsl';
-
 // --- Helper Components ---
+
+const PLANET_ASSET_ROOT = `${import.meta.env.BASE_URL}models/planets`;
 
 function CameraManager({ targetRef, isReturning, onReturnComplete }) {
   const { camera } = useThree();
@@ -71,88 +70,78 @@ function Orbit({ radius }) {
 
 const Planet = React.forwardRef(({
   id,
-  color,
-  size,
   orbitalRadius,
   orbitalSpeed,
   animationSpeed,
   setAnimationSpeed,
   onPlanetClick,
-  shaderColors,
-  hasRings,
+  modelPath,
+  visualRadius,
 }, ref) => {
   const orbitAngle = useRef(Math.random() * Math.PI * 2);
+  const visualRef = useRef();
   const [isHovered, setHovered] = useState(false);
+  const { scene } = useGLTF(modelPath);
 
-  const materialRef = useRef();
+  const { model, modelScale } = useMemo(() => {
+    const clonedModel = scene.clone(true);
+    const bounds = new THREE.Box3().setFromObject(clonedModel);
+    const boundingSphere = bounds.getBoundingSphere(new THREE.Sphere());
 
-  useFrame((state, delta) => {
-    // Orbital motion (stops if animationSpeed is 0)
+    clonedModel.position.sub(boundingSphere.center);
+    clonedModel.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    return {
+      model: clonedModel,
+      modelScale: visualRadius / boundingSphere.radius,
+    };
+  }, [scene, visualRadius]);
+
+  useFrame((_, delta) => {
+    if (!ref.current || !visualRef.current) return;
+
     orbitAngle.current += delta * orbitalSpeed * animationSpeed;
     ref.current.position.x = Math.sin(orbitAngle.current) * orbitalRadius;
     ref.current.position.z = Math.cos(orbitAngle.current) * orbitalRadius;
 
-    // Self-rotation (continues regardless of animationSpeed)
-    ref.current.rotation.y += 0.2 * delta;
-
-    // Animate the shader
-    materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
+    visualRef.current.rotation.y += 0.2 * delta;
+    const hoverScale = modelScale * (isHovered ? 1.08 : 1);
+    const nextScale = THREE.MathUtils.damp(
+      visualRef.current.scale.x,
+      hoverScale,
+      10,
+      delta,
+    );
+    visualRef.current.scale.setScalar(nextScale);
   });
 
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uColor1: { value: new THREE.Color(shaderColors[0]) },
-    uColor2: { value: new THREE.Color(shaderColors[1]) },
-    uColor3: { value: new THREE.Color(shaderColors[2]) },
-  }), [shaderColors]);
-
   return (
-    <group ref={ref}>
-      {/* Planet Mesh */}
-      <mesh
-        // Keep the event handlers on the main planet mesh
-        onClick={() => onPlanetClick(id)}
-        onPointerOver={(event) => {
-          event.stopPropagation();
-          setHovered(true);
-          if (animationSpeed !== 0) setAnimationSpeed(0.1); // Only slow down if not focused
-        }}
-        onPointerOut={() => {
-          setHovered(false);
-          if (animationSpeed !== 0) setAnimationSpeed(1.0); // Only speed up if not focused
-        }}
-      >
-        <sphereGeometry args={[size, 64, 64]} />
-        <shaderMaterial
-          ref={materialRef}
-          vertexShader={planetVertexShader}
-          fragmentShader={planetFragmentShader}
-          uniforms={uniforms}
-        />
-      </mesh>
-
-      {/* Atmosphere Mesh */}
-      <mesh scale={[1.05, 1.05, 1.05]}>
-        <sphereGeometry args={[size, 64, 64]} />
-        <meshStandardMaterial
-          color={shaderColors[0]}
-          transparent
-          opacity={0.2}
-          side={THREE.BackSide}
-        />
-      </mesh>
-
-      {hasRings && (
-        <mesh rotation-x={Math.PI / 2}>
-          <ringGeometry args={[size * 1.2, size * 1.8, 64]} />
-          <meshStandardMaterial
-            color="lightblue"
-            opacity={0.4}
-            transparent
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      )}
+    <group
+      ref={ref}
+      onClick={(event) => {
+        event.stopPropagation();
+        onPlanetClick(id);
+      }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+        document.body.style.cursor = 'pointer';
+        if (animationSpeed !== 0) setAnimationSpeed(0.1);
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        document.body.style.cursor = 'default';
+        if (animationSpeed !== 0) setAnimationSpeed(1);
+      }}
+    >
+      <group ref={visualRef} scale={modelScale} rotation={[-0.2, 0.55, 0.05]}>
+        <primitive object={model} />
+      </group>
     </group>
   );
 });
@@ -189,7 +178,7 @@ function Stars({ count = 5000 }) {
 
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3);
-    for (let i = 0; i < count * 3; i++) {
+    for (let i = 0; i < count; i++) {
       const r = 200 * Math.cbrt(Math.random());
       const theta = Math.random() * 2 * Math.PI;
       const phi = Math.acos(2 * Math.random() - 1);
@@ -206,7 +195,7 @@ function Stars({ count = 5000 }) {
   }, [count]);
 
   // Slowly rotate the starfield for a dynamic effect
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     ref.current.rotation.y += delta * 0.01;
     ref.current.rotation.x += delta * 0.005;
   });
@@ -237,32 +226,31 @@ function Stars({ count = 5000 }) {
 const projects = [
   {
     id: 1,
-    size: 1,
     orbitalRadius: 10,
     orbitalSpeed: 0.5,
+    modelPath: `${PLANET_ASSET_ROOT}/Planet_30.glb`,
+    visualRadius: 1.8,
     projectInfo: 'Project A',
-    shaderColors: ['#ff6600', '#ffaa00', '#993300'], // A fiery, orange planet
-    hasRings: true,
   },
   {
     id: 2,
-    size: 0.8,
     orbitalRadius: 16,
     orbitalSpeed: 0.3,
+    modelPath: `${PLANET_ASSET_ROOT}/Planet_24.glb`,
+    visualRadius: 1.45,
     projectInfo: 'Project B',
-    shaderColors: ['#0066ff', '#00aaff', '#ffffff'], // An icy, blue/white planet
-    hasRings: true,
   },
   {
     id: 3,
-    size: 1.2,
     orbitalRadius: 22,
     orbitalSpeed: 0.2,
+    modelPath: `${PLANET_ASSET_ROOT}/Planet_45.glb`,
+    visualRadius: 1.2,
     projectInfo: 'Project C',
-    shaderColors: ['#ff0000', '#990000', '#ff6666'], // A classic red planet
-    hasRings: false,
   },
 ];
+
+projects.forEach(({ modelPath }) => useGLTF.preload(modelPath));
 
 
 export default function App() {
@@ -303,8 +291,8 @@ export default function App() {
         )}
       </AnimatePresence>
       <Canvas camera={{ position: [0, 20, 25], fov: 45 }}>
-        <ambientLight intensity={0.2} />
-        <pointLight color="white" intensity={350} position={[0, 0, 0]} />
+        <hemisphereLight color="#b7d8ff" groundColor="#180b08" intensity={0.75} />
+        <pointLight color="#fff5e6" intensity={700} position={[0, 0, 0]} />
 
         <OrbitControls enabled={!focusedPlanet && !isReturning} />
 
