@@ -1,13 +1,14 @@
 import React, { useRef, useState, useMemo } from 'react';
 
 import * as THREE from 'three';
-import { OrbitControls } from '@react-three/drei';
+import { Billboard, Html, OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 
 import { AnimatePresence, useReducedMotion } from 'framer-motion';
 
 import ProjectPanel from './ProjectPanel';
+import './PlanetMarker.css';
 
 import sunVertexShader from './shaders/sun.vertex.glsl';
 import sunFragmentShader from './shaders/sun.fragment.glsl';
@@ -16,6 +17,7 @@ import { useEncryptedGLTF } from './loaders/useEncryptedGLTF';
 // --- Helper Components ---
 
 const PLANET_ASSET_ROOT = `${import.meta.env.BASE_URL}assets/planets`;
+const AMBIENT_ORBIT_SPEED = 0.70;
 
 function CameraManager({ targetRef, isReturning, onReturnComplete }) {
   const { camera } = useThree();
@@ -69,19 +71,139 @@ function Orbit({ radius }) {
   );
 }
 
+function PlanetMarker({
+  planetRef,
+  visualRadius,
+  isHovered,
+  accent,
+  category,
+  projectInfo,
+  technologies,
+}) {
+  const markerAnchorRef = useRef();
+  const { camera, size } = useThree();
+  const vectors = useMemo(
+    () => ({
+      center: new THREE.Vector3(),
+      edge: new THREE.Vector3(),
+      screenUp: new THREE.Vector3(),
+      projectedCenter: new THREE.Vector3(),
+      projectedEdge: new THREE.Vector3(),
+    }),
+    [],
+  );
+  const placement = useRef('above');
+  const calculateMarkerPosition = useMemo(
+    () => (_, activeCamera, viewportSize) => {
+      if (!planetRef.current) {
+        return [viewportSize.width * 0.5, viewportSize.height * 0.5];
+      }
+
+      planetRef.current.getWorldPosition(vectors.center);
+      vectors.projectedCenter.copy(vectors.center).project(activeCamera);
+
+      return [
+        (vectors.projectedCenter.x + 1) * viewportSize.width * 0.5,
+        (1 - vectors.projectedCenter.y) * viewportSize.height * 0.5,
+      ];
+    },
+    [planetRef, vectors],
+  );
+
+  useFrame(() => {
+    if (!planetRef.current || !markerAnchorRef.current) return;
+
+    planetRef.current.getWorldPosition(vectors.center);
+    vectors.screenUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    vectors.edge
+      .copy(vectors.center)
+      .addScaledVector(vectors.screenUp, visualRadius);
+    vectors.projectedCenter.copy(vectors.center).project(camera);
+    vectors.projectedEdge.copy(vectors.edge).project(camera);
+
+    const projectedRadius = Math.abs(
+      (vectors.projectedEdge.y - vectors.projectedCenter.y) * size.height * 0.5,
+    );
+    const markerOffset = THREE.MathUtils.clamp(projectedRadius + 14, 34, 170);
+    const markerScale = THREE.MathUtils.clamp(projectedRadius / 58, 0.76, 1.08);
+    const vertical = vectors.projectedCenter.y > 0.45 ? 'below' : 'above';
+    const anchor = markerAnchorRef.current;
+
+    anchor.style.setProperty('--planet-label-offset', `${markerOffset}px`);
+    anchor.style.setProperty('--planet-label-scale', markerScale.toFixed(3));
+
+    if (placement.current !== vertical) {
+      anchor.dataset.vertical = vertical;
+      placement.current = vertical;
+    }
+  });
+
+  return (
+    <Html
+      position={[0, 0, 0]}
+      calculatePosition={calculateMarkerPosition}
+      zIndexRange={[100, 10]}
+      style={{ top: 0, left: 0, width: 0, height: 0, pointerEvents: 'none' }}
+    >
+      <div
+        ref={markerAnchorRef}
+        className="planet-marker-anchor"
+        data-vertical="above"
+        style={{ '--planet-accent': accent }}
+      >
+        <div className="planet-marker-positioner">
+          <div className="planet-marker-scaler">
+            <div
+              className={`planet-marker ${isHovered ? 'is-expanded' : 'is-compact'}`}
+              role={isHovered ? 'tooltip' : undefined}
+            >
+              <div className="planet-marker__heading">
+                <span className="planet-marker__signal" aria-hidden="true" />
+                <span className="planet-marker__category">{category}</span>
+              </div>
+              <strong className="planet-marker__title">{projectInfo}</strong>
+
+              {isHovered && (
+                <>
+                  <ul className="planet-marker__technologies" aria-label="Technologies">
+                    {technologies?.slice(0, 3).map((technology) => (
+                      <li key={technology}>{technology}</li>
+                    ))}
+                  </ul>
+                  <span className="planet-marker__hint">
+                    Click to explore <span aria-hidden="true">&#8594;</span>
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Html>
+  );
+}
+
 const Planet = React.forwardRef(({
   id,
   orbitalRadius,
   orbitalSpeed,
   animationSpeed,
-  setAnimationSpeed,
   onPlanetClick,
+  onPlanetHoverChange,
   modelPath,
   visualRadius,
+  projectInfo,
+  category,
+  technologies,
+  accent,
+  featured = false,
 }, ref) => {
   const orbitAngle = useRef(Math.random() * Math.PI * 2);
   const visualRef = useRef();
+  const highlightRef = useRef();
+  const highlightMaterialRef = useRef();
   const [isHovered, setHovered] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
   const { scene } = useEncryptedGLTF(modelPath);
 
   const { model, modelScale } = useMemo(() => {
@@ -103,14 +225,16 @@ const Planet = React.forwardRef(({
     };
   }, [scene, visualRadius]);
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     if (!ref.current || !visualRef.current) return;
 
     orbitAngle.current += delta * orbitalSpeed * animationSpeed;
     ref.current.position.x = Math.sin(orbitAngle.current) * orbitalRadius;
     ref.current.position.z = Math.cos(orbitAngle.current) * orbitalRadius;
 
-    visualRef.current.rotation.y += 0.2 * delta;
+    if (!shouldReduceMotion && animationSpeed > 0) {
+      visualRef.current.rotation.y += 0.06 * delta;
+    }
     const hoverScale = modelScale * (isHovered ? 1.08 : 1);
     const nextScale = THREE.MathUtils.damp(
       visualRef.current.scale.x,
@@ -119,7 +243,29 @@ const Planet = React.forwardRef(({
       delta,
     );
     visualRef.current.scale.setScalar(nextScale);
-  });
+
+    if (highlightRef.current && highlightMaterialRef.current) {
+      const targetOpacity = isHovered ? 0.7 : featured ? 0.24 : 0;
+      highlightMaterialRef.current.opacity = THREE.MathUtils.damp(
+        highlightMaterialRef.current.opacity,
+        targetOpacity,
+        8,
+        delta,
+      );
+
+      const pulse = shouldReduceMotion
+        ? 1
+        : 1 + Math.sin(clock.getElapsedTime() * 1.35 + id) * 0.025;
+      const targetScale = (isHovered ? 1.08 : 1) * pulse;
+      const nextHighlightScale = THREE.MathUtils.damp(
+        highlightRef.current.scale.x,
+        targetScale,
+        8,
+        delta,
+      );
+      highlightRef.current.scale.setScalar(nextHighlightScale);
+    }
+  }, -1);
 
   return (
     <group
@@ -131,18 +277,44 @@ const Planet = React.forwardRef(({
       onPointerOver={(event) => {
         event.stopPropagation();
         setHovered(true);
+        onPlanetHoverChange(id, true);
         document.body.style.cursor = 'pointer';
-        if (animationSpeed !== 0) setAnimationSpeed(0.1);
       }}
       onPointerOut={() => {
         setHovered(false);
+        onPlanetHoverChange(id, false);
         document.body.style.cursor = 'default';
-        if (animationSpeed !== 0) setAnimationSpeed(1);
       }}
     >
+      <Billboard>
+        <mesh ref={highlightRef}>
+          <ringGeometry args={[visualRadius * 0.95, visualRadius * 0.98, 96]} />
+          <meshBasicMaterial
+            ref={highlightMaterialRef}
+            color={accent}
+            transparent
+            opacity={featured ? 0.24 : 0}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      </Billboard>
+
       <group ref={visualRef} scale={modelScale} rotation={[-0.2, 0.55, 0.05]}>
         <primitive object={model} />
       </group>
+
+      {(isHovered || featured) && (
+        <PlanetMarker
+          planetRef={ref}
+          visualRadius={visualRadius}
+          isHovered={isHovered}
+          accent={accent}
+          category={category}
+          projectInfo={projectInfo}
+          technologies={technologies}
+        />
+      )}
     </group>
   );
 });
@@ -311,6 +483,7 @@ const projects = [
     role: 'Design & development',
     year: '2026',
     accent: '#ff9a55',
+    featured: true,
   },
   {
     id: 2,
@@ -350,7 +523,8 @@ projects.forEach(({ modelPath }) => useEncryptedGLTF.preload(modelPath));
 
 
 export default function App() {
-  const [animationSpeed, setAnimationSpeed] = useState(1.0);
+  const shouldReduceMotion = useReducedMotion();
+  const [hoveredPlanetId, setHoveredPlanetId] = useState(null);
   const [focusedPlanet, setFocusedPlanet] = useState(null);
   const [isReturning, setIsReturning] = useState(false);
 
@@ -363,13 +537,20 @@ export default function App() {
     if (isReturning) setIsReturning(false);
 
     const project = projects.find(p => p.id === id);
+    setHoveredPlanetId(null);
     setFocusedPlanet(project);
-    setAnimationSpeed(0);
+  };
+
+  const handlePlanetHoverChange = (id, isHovered) => {
+    setHoveredPlanetId((currentId) => {
+      if (isHovered) return id;
+      return currentId === id ? null : currentId;
+    });
   };
 
   const handleClosePanel = () => {
     setFocusedPlanet(null);
-    setAnimationSpeed(1.0);
+    setHoveredPlanetId(null);
     setIsReturning(true);
   };
 
@@ -378,6 +559,9 @@ export default function App() {
   };
 
   const focusedPlanetRef = focusedPlanet ? planetRefs[projects.findIndex(p => p.id === focusedPlanet.id)] : null;
+  const animationSpeed = shouldReduceMotion || (hoveredPlanetId && !focusedPlanet)
+    ? 0.03
+    : AMBIENT_ORBIT_SPEED;
 
   return (
     <>
@@ -408,8 +592,8 @@ export default function App() {
             ref={planetRefs[index]}
             {...project}
             animationSpeed={animationSpeed}
-            setAnimationSpeed={setAnimationSpeed}
             onPlanetClick={handlePlanetClick}
+            onPlanetHoverChange={handlePlanetHoverChange}
           />
         ))}
         {projects.map(p => <Orbit key={`orbit_${p.id}`} radius={p.orbitalRadius} />)}
