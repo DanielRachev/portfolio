@@ -2,6 +2,13 @@
   box-sizing: border-box;
 }
 
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #f7fbff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
 html,
 body,
 #root {
@@ -11,4 +18,9 @@ body,
   padding: 0;
   overflow: hidden;
   background-color: #000010;
+}
+
+button,
+a {
+  font: inherit;
 }

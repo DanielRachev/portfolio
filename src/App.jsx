@@ -3,9 +3,9 @@ import React, { useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, useReducedMotion } from 'framer-motion';
 
 import ProjectPanel from './ProjectPanel';
 
@@ -174,13 +174,69 @@ function Sun() {
   );
 }
 
+const starVertexShader = `
+  uniform float uPixelRatio;
+  uniform float uTime;
+
+  varying float vSeed;
+  varying float vTwinkle;
+
+  float random(vec3 value) {
+    return fract(sin(dot(value, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+  }
+
+  void main() {
+    vSeed = random(position * 0.173);
+    float sizeSeed = random(position.zyx * 0.317);
+    float phase = vSeed * 6.28318530718;
+    float speed = mix(0.05, 0.16, sizeSeed);
+    float twinkleStrength = mix(0.006, 0.03, smoothstep(0.86, 1.0, sizeSeed));
+    vTwinkle = 1.0 + twinkleStrength * sin(uTime * speed + phase);
+
+    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+    float sizeVariance = mix(0.7, 1.7, pow(sizeSeed, 5.0));
+    float perspectiveSize = 110.0 * sizeVariance / max(1.0, -viewPosition.z);
+
+    gl_PointSize = clamp(perspectiveSize, 1.35, 5.0) * uPixelRatio;
+    gl_Position = projectionMatrix * viewPosition;
+  }
+`;
+
+const starFragmentShader = `
+  varying float vSeed;
+  varying float vTwinkle;
+
+  void main() {
+    float distanceFromCenter = length(gl_PointCoord - vec2(0.5));
+
+    if (distanceFromCenter > 0.5) discard;
+
+    float glow = 1.0 - smoothstep(0.08, 0.5, distanceFromCenter);
+    float core = 1.0 - smoothstep(0.0, 0.16, distanceFromCenter);
+    float warmMix = smoothstep(0.82, 1.0, vSeed);
+    vec3 coolWhite = vec3(0.72, 0.84, 1.0);
+    vec3 warmWhite = vec3(1.0, 0.86, 0.67);
+    vec3 starColor = mix(coolWhite, warmWhite, warmMix);
+    starColor = mix(starColor, vec3(1.0), core);
+
+    float alpha = (0.24 * glow + 0.76 * core) * vTwinkle;
+    float brightness = (0.75 + 1.5 * core) * vTwinkle;
+    gl_FragColor = vec4(starColor * brightness, alpha);
+  }
+`;
+
 function Stars({ count = 5000 }) {
   const ref = useRef();
+  const materialRef = useRef();
+  const shouldReduceMotion = useReducedMotion();
 
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      const r = 200 * Math.cbrt(Math.random());
+      const isNearFieldStar = Math.random() < 0.14;
+      const r = isNearFieldStar
+        ? 6 + 42 * Math.cbrt(Math.random())
+        : 65 + 135 * Math.cbrt(Math.random());
       const theta = Math.random() * 2 * Math.PI;
       const phi = Math.acos(2 * Math.random() - 1);
 
@@ -195,10 +251,22 @@ function Stars({ count = 5000 }) {
     return pos;
   }, [count]);
 
+  const uniforms = useMemo(
+    () => ({
+      uPixelRatio: { value: 1 },
+      uTime: { value: 0 },
+    }),
+    [],
+  );
+
   // Slowly rotate the starfield for a dynamic effect
-  useFrame((_, delta) => {
-    ref.current.rotation.y += delta * 0.01;
-    ref.current.rotation.x += delta * 0.005;
+  useFrame(({ clock, gl }, delta) => {
+    if (!shouldReduceMotion) {
+      ref.current.rotation.y += delta * 0.01;
+      ref.current.rotation.x += delta * 0.005;
+      materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
+    }
+    materialRef.current.uniforms.uPixelRatio.value = Math.min(gl.getPixelRatio(), 1.5);
   });
 
   return (
@@ -211,12 +279,15 @@ function Stars({ count = 5000 }) {
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial
-        size={0.35}
-        color="#ffffff"
+      <shaderMaterial
+        ref={materialRef}
+        vertexShader={starVertexShader}
+        fragmentShader={starFragmentShader}
+        uniforms={uniforms}
         transparent
-        opacity={0.8}
-        sizeAttenuation={true}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
       />
     </points>
   );
@@ -231,7 +302,15 @@ const projects = [
     orbitalSpeed: 0.5,
     modelPath: `${PLANET_ASSET_ROOT}/p-c7b5e103.planet`,
     visualRadius: 1.8,
+    sequence: '01',
+    category: 'Featured project',
     projectInfo: 'Project A',
+    summary: 'A concise, outcome-focused summary of this project will live here.',
+    description: 'Use this space to explain the problem, your approach, the decisions you made, and the result you delivered.',
+    technologies: ['React', 'Three.js', 'WebGL'],
+    role: 'Design & development',
+    year: '2026',
+    accent: '#ff9a55',
   },
   {
     id: 2,
@@ -239,7 +318,15 @@ const projects = [
     orbitalSpeed: 0.3,
     modelPath: `${PLANET_ASSET_ROOT}/p-a91f2d4c.planet`,
     visualRadius: 1.45,
+    sequence: '02',
+    category: 'Selected work',
     projectInfo: 'Project B',
+    summary: 'A concise, outcome-focused summary of this project will live here.',
+    description: 'Use this space to explain the problem, your approach, the decisions you made, and the result you delivered.',
+    technologies: ['React', 'Vite', 'Animation'],
+    role: 'Product engineering',
+    year: '2026',
+    accent: '#72d9ff',
   },
   {
     id: 3,
@@ -247,7 +334,15 @@ const projects = [
     orbitalSpeed: 0.2,
     modelPath: `${PLANET_ASSET_ROOT}/p-e48279ad.planet`,
     visualRadius: 1.2,
+    sequence: '03',
+    category: 'Selected work',
     projectInfo: 'Project C',
+    summary: 'A concise, outcome-focused summary of this project will live here.',
+    description: 'Use this space to explain the problem, your approach, the decisions you made, and the result you delivered.',
+    technologies: ['JavaScript', 'Shaders', 'UI/UX'],
+    role: 'Creative development',
+    year: '2026',
+    accent: '#ff6b78',
   },
 ];
 
@@ -291,7 +386,7 @@ export default function App() {
           <ProjectPanel project={focusedPlanet} onClose={handleClosePanel} />
         )}
       </AnimatePresence>
-      <Canvas camera={{ position: [0, 20, 25], fov: 45 }}>
+      <Canvas camera={{ position: [0, 20, 25], fov: 45 }} dpr={[1, 1.5]}>
         <hemisphereLight color="#b7d8ff" groundColor="#180b08" intensity={0.75} />
         <pointLight color="#fff5e6" intensity={700} position={[0, 0, 0]} />
 
