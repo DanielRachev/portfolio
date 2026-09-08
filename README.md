@@ -86,6 +86,37 @@ npm run deploy
 Vite minifies JavaScript with esbuild and does not produce source maps. The
 deployment contains only opaque `.planet` containers, not raw GLBs.
 
+## Branding and link previews
+
+The public address is https://danielrachev.github.io/portfolio/. `index.html`
+contains the canonical URL, page title, description, theme color, and static
+Open Graph / social-card metadata. Sharing crawlers do not need to run React or
+load WebGL to read these tags. Keep the canonical URL, `og:url`, and both absolute
+image URLs in sync if the deployment address changes. Icon URLs use Vite's base
+path so they resolve under `/portfolio/`.
+
+The Orbit favicon (SVG and 32px PNG), 180px Apple touch icon, and 1200×630 social
+preview are committed under `public/`. Recreate them with:
+
+```bash
+npm run branding:generate
+npm test
+npm run build
+```
+
+Edit the preview layout/text in `scripts/generate-branding.mjs`. It uses the same
+Lucide Orbit icon and local Plus Jakarta Sans, Inter, and JetBrains Mono fonts as
+the page, with text outlined before rasterization for reproducible rendering.
+Sharp and Fontkit are build-time tools only; no image service, additional runtime
+code, or purchased planet geometry is involved. The icon attribution is included
+in `public/branding-license.txt` and the SVG. Existing GitHub and email links stay
+in `src/PortfolioPage.jsx`.
+
+`npm run build` copies these assets but does not regenerate them. Deployment is
+still an explicit `npm run deploy` step. Social services may cache old previews;
+after changing the preview, use a new filename and update both image meta tags
+when a fresh image URL is needed.
+
 ## Performance checks
 
 ```bash
