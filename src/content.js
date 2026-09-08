@@ -12,6 +12,7 @@ export const projects = [
     takeaway: 'Coordination · Recovery · Idempotency', visual: 'checkout',
     accent: '#edb684', featured: true,
     orbitalRadius: 10, orbitalSpeed: 0.5, visualRadius: 1.8,
+    initialAngle: -1.0,
     modelPath: `${assets}/p-c7b5e103.planet`,
   },
   {
@@ -24,6 +25,7 @@ export const projects = [
     takeaway: 'Correctness · Routing · Model checking', visual: 'chord',
     accent: '#99c9df', featured: false,
     orbitalRadius: 16, orbitalSpeed: 0.3, visualRadius: 1.45,
+    initialAngle: 1.85,
     modelPath: `${assets}/p-a91f2d4c.planet`,
   },
   {
@@ -36,6 +38,7 @@ export const projects = [
     takeaway: 'Performance · Observability · Cost attribution', visual: 'metrics',
     accent: '#aaa0e6', featured: false,
     orbitalRadius: 22, orbitalSpeed: 0.2, visualRadius: 1.2,
+    initialAngle: -2.5,
     modelPath: `${assets}/p-e48279ad.planet`,
   },
   {
@@ -48,6 +51,7 @@ export const projects = [
     takeaway: 'Collaboration · Remote builds · Developer experience', visual: 'editor',
     accent: '#96c9c2', featured: false,
     orbitalRadius: 28, orbitalSpeed: 0.15, visualRadius: 1.5,
+    initialAngle: 2.95,
     modelPath: `${assets}/p-a91f2d4c.planet`,
   },
 ];

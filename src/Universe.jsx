@@ -10,6 +10,7 @@ import { AnimatePresence, useReducedMotion } from 'framer-motion';
 import ProjectPanel from './ProjectPanel';
 import { projects } from './content';
 import { QUALITY, initialQuality } from './scenePolicy';
+import { initialOrbitAngle, orbitPosition, overviewPosition, smoothProgress, labelOpacity, RETURN_DURATION } from './sceneMotion';
 import ScenePerformance from './ScenePerformance';
 import './PlanetMarker.css';
 
@@ -21,16 +22,28 @@ import { useEncryptedGLTF } from './loaders/useEncryptedGLTF';
 
 const AMBIENT_ORBIT_SPEED = 0.70;
 
-function CameraManager({ targetRef, isReturning, onReturnComplete }) {
-  const { camera } = useThree();
-  const defaultCameraPosition = useMemo(() => new THREE.Vector3(0, 20, 25), []);
+function CameraManager({ active, controlsRef, targetRef, isReturning, onReturnComplete }) {
+  const { camera, size } = useThree();
+  const shouldReduceMotion = useReducedMotion();
+  const defaultCameraPosition = useMemo(() => new THREE.Vector3(...overviewPosition(size.width / size.height)), [size.width, size.height]);
 
   const targetPosition = useMemo(() => new THREE.Vector3(), []);
   const cameraPosition = useMemo(() => new THREE.Vector3(), []);
   const cameraLookAt = useMemo(() => new THREE.Vector3(), []);
+  const orientation = useMemo(() => ({ matrix: new THREE.Matrix4(), target: new THREE.Quaternion() }), []);
+  const returning = useRef(null);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
+    delta = Math.min(delta, 0.1);
+    if (!active) {
+      camera.position.copy(defaultCameraPosition);
+      camera.lookAt(0, 0, 0);
+      controlsRef.current?.target.set(0, 0, 0);
+      returning.current = null;
+      return;
+    }
     if (targetRef && targetRef.current) {
+      returning.current = null;
       targetRef.current.getWorldPosition(targetPosition);
 
       // Calculate the final camera position
@@ -47,17 +60,33 @@ function CameraManager({ targetRef, isReturning, onReturnComplete }) {
       cameraLookAt.x += horizontalShift;
 
       // Smoothly move the camera
-      camera.position.lerp(cameraPosition, 0.05);
-      camera.lookAt(cameraLookAt);
+      const blend = shouldReduceMotion ? 1 : 1 - Math.exp(-3.5 * delta);
+      camera.position.lerp(cameraPosition, blend);
+      orientation.matrix.lookAt(camera.position, cameraLookAt, camera.up);
+      orientation.target.setFromRotationMatrix(orientation.matrix);
+      camera.quaternion.slerp(orientation.target, blend);
 
     } else if (isReturning) {
-      camera.position.lerp(defaultCameraPosition, 0.05);
-      camera.lookAt(0, 0, 0);
-
-      // If the camera is close enough to the default position, stop the animation
-      if (camera.position.distanceTo(defaultCameraPosition) < 0.9) {
+      if (!returning.current) {
+        returning.current = { position: camera.position.clone(), rotation: camera.quaternion.clone(), elapsed: 0, finished: false };
+      }
+      const transition = returning.current;
+      if (transition.finished) return;
+      transition.elapsed += delta;
+      cameraLookAt.set(0, 0, 0);
+      orientation.matrix.lookAt(defaultCameraPosition, cameraLookAt, camera.up);
+      orientation.target.setFromRotationMatrix(orientation.matrix);
+      const alreadyHome = camera.position.distanceTo(defaultCameraPosition) < 0.001 && camera.quaternion.angleTo(orientation.target) < 0.001;
+      const progress = shouldReduceMotion || alreadyHome ? 1 : smoothProgress(transition.elapsed / RETURN_DURATION);
+      camera.position.lerpVectors(transition.position, defaultCameraPosition, progress);
+      camera.quaternion.slerpQuaternions(transition.rotation, orientation.target, progress);
+      if (progress === 1) {
+        controlsRef.current?.target.set(0, 0, 0);
+        transition.finished = true;
         onReturnComplete();
       }
+    } else {
+      returning.current = null;
     }
   });
 
@@ -131,6 +160,11 @@ function PlanetMarker({
     const markerScale = THREE.MathUtils.clamp(projectedRadius / 58, 0.76, 1.08);
     const vertical = vectors.projectedCenter.y > 0.45 ? 'below' : 'above';
     const anchor = markerAnchorRef.current;
+    const inFront = vectors.projectedCenter.z > -1 && vectors.projectedCenter.z < 1;
+    const opacity = inFront ? labelOpacity(projectedRadius, isHovered) : 0;
+    anchor.style.opacity = opacity.toFixed(3);
+    anchor.style.visibility = opacity > 0 ? 'visible' : 'hidden';
+    anchor.setAttribute('aria-hidden', opacity > 0 ? 'false' : 'true');
 
     anchor.style.setProperty('--planet-label-offset', `${markerOffset}px`);
     anchor.style.setProperty('--planet-label-scale', markerScale.toFixed(3));
@@ -188,6 +222,7 @@ const Planet = React.forwardRef(({
   id,
   orbitalRadius,
   orbitalSpeed,
+  initialAngle,
   animationSpeed,
   onPlanetClick,
   onPlanetHoverChange,
@@ -200,7 +235,9 @@ const Planet = React.forwardRef(({
   featured = false,
   previewDescription,
 }, ref) => {
-  const orbitAngle = useRef(Math.random() * Math.PI * 2);
+  const startAngle = initialOrbitAngle(id, initialAngle);
+  const orbitAngle = useRef(startAngle);
+  const startPosition = useMemo(() => orbitPosition(orbitalRadius, startAngle), [orbitalRadius, startAngle]);
   const visualRef = useRef();
   const highlightRef = useRef();
   const highlightMaterialRef = useRef();
@@ -275,6 +312,7 @@ const Planet = React.forwardRef(({
   return (
     <group
       ref={ref}
+      position={startPosition}
       onClick={(event) => {
         event.stopPropagation();
         onPlanetClick(id);
@@ -536,6 +574,7 @@ export default function Universe({ active, ready, onReady, onError, onExit, entr
   }, []);
 
   const backRef = useRef(null);
+  const controlsRef = useRef(null);
   useEffect(() => {
     if (!active) return;
     backRef.current?.focus();
@@ -588,9 +627,11 @@ export default function Universe({ active, ready, onReady, onError, onExit, entr
         <hemisphereLight color="#b7d8ff" groundColor="#180b08" intensity={0.75} />
         <pointLight color="#fff5e6" intensity={700} position={[0, 0, 0]} />
 
-        <OrbitControls enabled={!focusedPlanet && !isReturning} />
+        <OrbitControls ref={controlsRef} enabled={!focusedPlanet && !isReturning} />
 
         <CameraManager
+          active={active}
+          controlsRef={controlsRef}
           targetRef={focusedPlanetRef}
           isReturning={isReturning}
           onReturnComplete={handleReturnComplete}
@@ -605,7 +646,7 @@ export default function Universe({ active, ready, onReady, onError, onExit, entr
             key={project.id}
             ref={planetRefs[index]}
             {...project}
-            animationSpeed={animationSpeed}
+            animationSpeed={active ? animationSpeed : 0}
             onPlanetClick={handlePlanetClick}
             onPlanetHoverChange={handlePlanetHoverChange}
           />

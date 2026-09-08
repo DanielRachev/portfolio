@@ -29,6 +29,16 @@ Entering the universe preserves the page's scroll position. Use the back button
 or Escape to return. When a project panel is open, Escape closes that panel first.
 Named project buttons also provide keyboard and touch access to every planet.
 
+Planet records have a hand-composed `initialAngle` (radians). Orbital motion starts
+only when the 3D view is active, so background loading does not randomize the
+opening layout. Projects without an angle use a stable ID-derived fallback.
+The overview camera pulls back on narrow screens to keep the opening planets in
+frame. Closing a project eases camera position and orientation back over 1.8
+seconds; reduced-motion visitors return immediately. Floating labels fade between
+22px and 12px projected planet radius and disappear below that range. Hovering
+still reveals the popup; featured rings are unchanged. Timing and label thresholds
+live in `src/sceneMotion.js`.
+
 ## Development
 
 ```bash
