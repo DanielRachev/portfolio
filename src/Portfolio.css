@@ -40,6 +40,9 @@
 .site-navigation a:hover, .text-link:hover, .site-footer a:hover { color: var(--accent); }
 .universe-entry { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 9px; min-width: 194px; min-height: 40px; padding: 9px 12px; color: var(--accent); background: #8ac9ec07; border: 1px solid #8ac9ec66; border-radius: 3px; font: 11px/1.5 var(--mono); }
 .universe-entry svg { width: 16px; height: 16px; }
+.universe-entry .orbit-icon, .button--primary .orbit-icon { flex-shrink: 0; transform-origin: center; transition: transform 700ms cubic-bezier(0.4, 0, 0.2, 1); }
+.universe-entry:not(:disabled):is(:hover, :focus-visible) .orbit-icon,
+.button--primary:not(:disabled):is(:hover, :focus-visible) .orbit-icon { transform: rotate(180deg); }
 .universe-entry:disabled { color: var(--muted); border-color: var(--line); }
 .loading-orbit { width: 13px; height: 13px; border: 1px solid #9aa3b533; border-top-color: var(--accent); border-radius: 50%; animation: orbit-loading 1.5s linear infinite; }
 @keyframes orbit-loading { to { transform: rotate(360deg); } }
@@ -168,6 +171,7 @@
   .work-card-actions button { font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .universe-entry .orbit-icon, .button--primary .orbit-icon { transition: none; transform: none !important; }
   .loading-orbit { animation: none; }
   .work-card { transition: none; }
 }

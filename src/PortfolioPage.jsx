@@ -1,13 +1,8 @@
+import { Orbit } from 'lucide-react';
 import { experience, projects, technicalStack } from './content';
 
 function OrbitIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="2" fill="currentColor" />
-      <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(-35 12 12)" stroke="currentColor" />
-      <path d="M8 3.5a9.5 9.5 0 0 1 12.5 10M16 20.5A9.5 9.5 0 0 1 3.5 10" stroke="currentColor" />
-    </svg>
-  );
+  return <Orbit className="orbit-icon" size={20} aria-hidden="true" />;
 }
 
 export default function PortfolioPage({ inactive, sceneStatus, entryRef, onEnterUniverse, onSelectProject }) {
