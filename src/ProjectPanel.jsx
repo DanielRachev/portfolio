@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 import './ProjectPanel.css';
+import '@fontsource/space-grotesk/latin-500.css';
+import '@fontsource/space-grotesk/latin-600.css';
 
 const focusableSelector = [
   'a[href]',

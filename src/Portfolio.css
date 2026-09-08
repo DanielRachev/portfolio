@@ -60,6 +60,7 @@
 .text-link { padding: 12px 8px; font: 11px/1.5 var(--mono); color: var(--muted) !important; }
 .text-link span { margin-left: 8px; }
 .scene-note { margin: 20px 0 0; color: var(--muted); font-size: 13px; }
+.project-load-error { position: fixed; bottom: 16px; left: 16px; right: 16px; z-index: 2000; padding: 16px; border: 1px solid var(--line); background: #080b1b; color: var(--ink); font-size: 14px; }
 .work-section, .stack-section, .experience-section { padding-bottom: 88px; }
 .portfolio-page h2 { margin: 0 0 30px; color: #eff1f6; font: 600 30px/1.35 var(--heading); letter-spacing: -0.8px; }
 .project-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }

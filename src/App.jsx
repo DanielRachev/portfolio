@@ -1,9 +1,24 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import ProjectPanel from './ProjectPanel';
 import PortfolioPage from './PortfolioPage';
 import './Portfolio.css';
+import { shouldPreload } from './scenePolicy';
 
-const Universe = lazy(() => import('./Universe'));
+function createUniverse() {
+  return lazy(async () => {
+    const module = await import('./Universe');
+    module.resetSceneAssets();
+    return module;
+  });
+}
+
+function supportsWebGL() {
+  try {
+    const context = document.createElement('canvas').getContext('webgl2');
+    if (!context) return false;
+    context.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch { return false; }
+}
 
 class SceneBoundary extends Component {
   state = { failed: false };
@@ -14,25 +29,49 @@ class SceneBoundary extends Component {
 
 export default function App() {
   const [prepareScene, setPrepareScene] = useState(false);
-  const [sceneStatus, setSceneStatus] = useState('loading');
+  const [sceneStatus, setSceneStatus] = useState(() => shouldPreload(navigator.connection) ? 'loading' : 'idle');
+  const [Universe, setUniverse] = useState(createUniverse);
+  const [attempt, setAttempt] = useState(0);
+  const attemptRef = useRef(0);
   const [inUniverse, setInUniverse] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [ProjectPanel, setProjectPanel] = useState(null);
+  const [panelStatus, setPanelStatus] = useState('idle');
+  const panelRequest = useRef(0);
   const [entryProjectId, setEntryProjectId] = useState(null);
   const entryRef = useRef(null);
   const returnFocus = useRef(null);
   const savedScroll = useRef(0);
 
-  useEffect(() => {
-    // Give the text and navigation a chance to paint before fetching WebGL.
-    const timer = window.setTimeout(() => setPrepareScene(true), 1200);
-    return () => window.clearTimeout(timer);
+  const startScene = useCallback(() => {
+    attemptRef.current += 1;
+    setAttempt(attemptRef.current);
+    setUniverse(createUniverse);
+    setInUniverse(false);
+    const supported = supportsWebGL();
+    setSceneStatus(supported ? 'loading' : 'error');
+    setPrepareScene(supported);
   }, []);
+
+  useEffect(() => {
+    if (!shouldPreload(navigator.connection)) return;
+    // Keep loading off the initial paint and respect constrained connections.
+    let idle;
+    const timer = window.setTimeout(() => {
+      if (window.requestIdleCallback) idle = window.requestIdleCallback(startScene, { timeout: 2500 });
+      else startScene();
+    }, 1200);
+    return () => {
+      window.clearTimeout(timer);
+      if (idle !== undefined) window.cancelIdleCallback(idle);
+    };
+  }, [startScene]);
 
   useEffect(() => {
     if (!prepareScene || sceneStatus !== 'loading') return;
     const timeout = window.setTimeout(() => setSceneStatus('error'), 45000);
     return () => window.clearTimeout(timeout);
-  }, [prepareScene, sceneStatus]);
+  }, [prepareScene, sceneStatus, attempt]);
 
   useEffect(() => {
     if (!inUniverse && !selectedProject) return;
@@ -48,10 +87,33 @@ export default function App() {
     returnFocus.current.focus({ preventScroll: true });
   }, [inUniverse]);
 
-  const sceneReady = useCallback(() => setSceneStatus('ready'), []);
-  const sceneFailed = useCallback(() => { setSceneStatus('error'); setInUniverse(false); }, []);
+  const sceneReady = useCallback(() => {
+    if (attempt === attemptRef.current) setSceneStatus(current => current === 'loading' ? 'ready' : current);
+  }, [attempt]);
+  const sceneFailed = useCallback(() => {
+    if (attempt !== attemptRef.current) return;
+    setSceneStatus('error');
+    setInUniverse(false);
+  }, [attempt]);
   const closeProject = useCallback(() => setSelectedProject(null), []);
+  const selectProject = async project => {
+    const request = ++panelRequest.current;
+    if (ProjectPanel) { setSelectedProject(project); return; }
+    setPanelStatus('loading');
+    try {
+      const module = await import('./ProjectPanel');
+      if (request !== panelRequest.current) return;
+      setProjectPanel(() => module.default);
+      setSelectedProject(project);
+      setPanelStatus('idle');
+    } catch {
+      if (request === panelRequest.current) setPanelStatus('error');
+    }
+  };
   const enterUniverse = (event, projectId = null) => {
+    panelRequest.current++;
+    setPanelStatus('idle');
+    if (sceneStatus === 'idle' || sceneStatus === 'error') { startScene(); return; }
     if (sceneStatus !== 'ready') return;
     savedScroll.current = window.scrollY;
     returnFocus.current = event.currentTarget;
@@ -68,14 +130,16 @@ export default function App() {
         sceneStatus={sceneStatus}
         entryRef={entryRef}
         onEnterUniverse={enterUniverse}
-        onSelectProject={setSelectedProject}
+        onSelectProject={selectProject}
       />
-      {selectedProject && <ProjectPanel project={selectedProject} onClose={closeProject} />}
+      {panelStatus === 'loading' && <span className="sr-only" role="status">Loading project details.</span>}
+      {panelStatus === 'error' && <p className="project-load-error" role="alert">Project details couldn’t load. Please try opening the project again.</p>}
+      {selectedProject && ProjectPanel && <ProjectPanel project={selectedProject} onClose={closeProject} />}
       {prepareScene && sceneStatus !== 'error' && (
         <div className={`universe-shell ${inUniverse ? 'is-active' : ''}`} inert={!inUniverse} aria-hidden={!inUniverse}>
-          <SceneBoundary onError={sceneFailed}>
+          <SceneBoundary key={attempt} onError={sceneFailed}>
             <Suspense fallback={null}>
-              <Universe active={inUniverse} ready={sceneStatus === 'ready'} onReady={sceneReady} onExit={exitUniverse} entryProjectId={entryProjectId} />
+              <Universe active={inUniverse} ready={sceneStatus === 'ready'} onReady={sceneReady} onError={sceneFailed} onExit={exitUniverse} entryProjectId={entryProjectId} />
             </Suspense>
           </SceneBoundary>
         </div>

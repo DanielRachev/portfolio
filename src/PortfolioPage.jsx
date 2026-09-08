@@ -7,7 +7,7 @@ function OrbitIcon() {
 
 export default function PortfolioPage({ inactive, sceneStatus, entryRef, onEnterUniverse, onSelectProject }) {
   const ready = sceneStatus === 'ready';
-  const entryLabel = ready ? 'Enter solar system' : sceneStatus === 'error' ? 'Scene unavailable' : 'Loading solar system';
+  const entryLabel = ready ? 'Enter solar system' : sceneStatus === 'error' ? 'Retry solar system' : sceneStatus === 'idle' ? 'Load solar system' : 'Loading solar system';
 
   return (
     <div className="portfolio-page" inert={inactive} aria-hidden={inactive ? true : undefined}>
@@ -24,12 +24,12 @@ export default function PortfolioPage({ inactive, sceneStatus, entryRef, onEnter
             <a href="#experience">Experience</a>
             <a href="#contact">Contact</a>
           </nav>
-          <button ref={entryRef} className="universe-entry" disabled={!ready} onClick={onEnterUniverse}>
+          <button ref={entryRef} className="universe-entry" disabled={sceneStatus === 'loading'} onClick={onEnterUniverse}>
             {sceneStatus === 'loading' ? <span className="loading-orbit" aria-hidden="true" /> : <OrbitIcon />}
             <span>{entryLabel}</span>
           </button>
           <span className="sr-only" role="status">
-            {ready ? 'The solar system is ready to explore.' : sceneStatus === 'error' ? 'The scene could not load. All projects are available below.' : 'Preparing the solar system. You can read and scroll now.'}
+            {ready ? 'The solar system is ready to explore.' : sceneStatus === 'error' ? 'The scene could not load. Retry using the solar system button. All projects are available below.' : sceneStatus === 'idle' ? 'The solar system will load on request to save data.' : 'Preparing the solar system. You can read and scroll now.'}
           </span>
         </div>
       </header>
@@ -39,13 +39,14 @@ export default function PortfolioPage({ inactive, sceneStatus, entryRef, onEnter
           <h1 id="identity-title">Building software.<br />Exploring distributed systems.</h1>
           <p className="hero-statement">I’m Daniel, a master’s student in Computer Science at TU Delft and a software engineer at Codehive. I’m interested in how distributed systems coordinate, recover, and stay correct.</p>
           <div className="hero-actions">
-            <button className="button button--primary" disabled={!ready} onClick={onEnterUniverse}>
-              <OrbitIcon /><span>Explore in 3D</span>
+            <button className="button button--primary" disabled={sceneStatus === 'loading'} onClick={onEnterUniverse}>
+              <OrbitIcon /><span>{sceneStatus === 'error' ? 'Retry 3D view' : sceneStatus === 'idle' ? 'Load 3D view' : 'Explore in 3D'}</span>
             </button>
             <a className="button button--secondary" href="https://github.com/DanielRachev" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
             <a className="text-link" href="#work">Browse projects <span aria-hidden="true">↓</span></a>
           </div>
-          {sceneStatus === 'error' && <p className="scene-note">The solar system couldn’t load this time. You can explore all my projects below.</p>}
+          {sceneStatus === 'error' && <p className="scene-note">The solar system couldn’t load this time. You can retry above or explore all my projects below.</p>}
+          {sceneStatus === 'idle' && <p className="scene-note">To save data, the solar system loads only when you request it.</p>}
         </section>
 
         <section id="work" className="work-section" aria-labelledby="work-title">

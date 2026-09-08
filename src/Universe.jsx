@@ -9,6 +9,8 @@ import { AnimatePresence, useReducedMotion } from 'framer-motion';
 
 import ProjectPanel from './ProjectPanel';
 import { projects } from './content';
+import { QUALITY, initialQuality } from './scenePolicy';
+import ScenePerformance from './ScenePerformance';
 import './PlanetMarker.css';
 
 import sunVertexShader from './shaders/sun.vertex.glsl';
@@ -407,8 +409,8 @@ function Stars({ count = 5000 }) {
   const shouldReduceMotion = useReducedMotion();
 
   const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
+    const pos = new Float32Array(QUALITY.high.stars * 3);
+    for (let i = 0; i < QUALITY.high.stars; i++) {
       const isNearFieldStar = Math.random() < 0.14;
       const r = isNearFieldStar
         ? 6 + 42 * Math.cbrt(Math.random())
@@ -425,7 +427,7 @@ function Stars({ count = 5000 }) {
       pos[i * 3 + 2] = z;
     }
     return pos;
-  }, [count]);
+  }, []);
 
   const uniforms = useMemo(
     () => ({
@@ -448,7 +450,7 @@ function Stars({ count = 5000 }) {
 
   return (
     <points ref={ref}>
-      <bufferGeometry>
+      <bufferGeometry drawRange-count={count}>
         <bufferAttribute
           attach="attributes-position"
           count={positions.length / 3}
@@ -472,7 +474,11 @@ function Stars({ count = 5000 }) {
 
 // --- Main App Component ---
 
-projects.forEach(({ modelPath }) => useEncryptedGLTF.preload(modelPath));
+// Scene retries need to clear rejected loader promises before remounting.
+// eslint-disable-next-line react-refresh/only-export-components
+export function resetSceneAssets() {
+  projects.forEach(({ modelPath }) => useEncryptedGLTF.clear(modelPath));
+}
 
 // This mounts only once all suspended models have parsed. Wait for a rendered
 // frame too, so the entry button never promises an empty scene.
@@ -485,7 +491,19 @@ function SceneReady({ onReady }) {
   return null;
 }
 
-export default function Universe({ active, ready, onReady, onExit, entryProjectId }) {
+export default function Universe({ active, ready, onReady, onError, onExit, entryProjectId }) {
+  const [tier, setTier] = useState(() => initialQuality({
+    cores: navigator.hardwareConcurrency,
+    memory: navigator.deviceMemory,
+    coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+  }));
+  const [visible, setVisible] = useState(() => !document.hidden);
+  useEffect(() => {
+    const update = () => setVisible(!document.hidden);
+    document.addEventListener('visibilitychange', update);
+    return () => document.removeEventListener('visibilitychange', update);
+  }, []);
+  const quality = QUALITY[tier];
   const shouldReduceMotion = useReducedMotion();
   const [hoveredPlanetId, setHoveredPlanetId] = useState(null);
   const [focusedPlanet, setFocusedPlanet] = useState(null);
@@ -553,7 +571,7 @@ export default function Universe({ active, ready, onReady, onExit, entryProjectI
           <ProjectPanel project={focusedPlanet} onClose={handleClosePanel} />
         )}
       </AnimatePresence>
-      <div className="universe-content" inert={!!focusedPlanet}>
+      <div className="universe-content" data-quality={tier} inert={!!focusedPlanet}>
         <header className="universe-toolbar">
           <button ref={backRef} className="button button--glass" onClick={onExit}>← Back to portfolio</button>
         </header>
@@ -564,7 +582,8 @@ export default function Universe({ active, ready, onReady, onExit, entryProjectI
             {projects.map(project => <button key={project.id} onClick={() => handlePlanetClick(project.id)}>{project.projectInfo}</button>)}
           </nav>
         </div>
-      <Canvas frameloop={active || !ready ? 'always' : 'never'} camera={{ position: [0, 20, 25], fov: 45 }} dpr={[1, 1.5]} fallback={<p className="scene-fallback">This browser cannot display the universe. You can explore every project in the portfolio below.</p>}>
+      <Canvas frameloop={visible && (active || !ready) ? 'always' : 'never'} camera={{ position: [0, 20, 25], fov: 45 }} dpr={[1, quality.dpr]} fallback={<p>This browser cannot display the solar system. All projects are available in the portfolio.</p>}>
+        <ScenePerformance active={active && visible} tier={tier} onQualityChange={setTier} onError={onError} />
         <Suspense fallback={null}>
         <hemisphereLight color="#b7d8ff" groundColor="#180b08" intensity={0.75} />
         <pointLight color="#fff5e6" intensity={700} position={[0, 0, 0]} />
@@ -577,7 +596,7 @@ export default function Universe({ active, ready, onReady, onExit, entryProjectI
           onReturnComplete={handleReturnComplete}
         />
 
-        <Stars />
+        <Stars count={quality.stars} />
 
         <Sun />
 
@@ -593,14 +612,14 @@ export default function Universe({ active, ready, onReady, onExit, entryProjectI
         ))}
         {projects.map(p => <Orbit key={`orbit_${p.id}`} radius={p.orbitalRadius} />)}
 
-        <EffectComposer>
+        {quality.bloomHeight > 0 && <EffectComposer multisampling={quality.multisampling}>
           <Bloom
             intensity={1.5}
             luminanceThreshold={0.5}
             luminanceSmoothing={0.9}
-            height={300}
+            height={quality.bloomHeight}
           />
-        </EffectComposer>
+        </EffectComposer>}
         <SceneReady onReady={onReady} />
         </Suspense>
       </Canvas>

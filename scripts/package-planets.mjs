@@ -12,6 +12,7 @@ import {
 import { constants } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { optimizePlanet } from './optimize-planets.mjs';
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -112,7 +113,8 @@ async function packageAssets() {
   for (const asset of assets) {
     const sourcePath = path.join(privateAssetDirectory, asset.source);
     const outputPath = path.join(outputDirectory, asset.output);
-    const plaintext = await readFile(sourcePath);
+    const original = await readFile(sourcePath);
+    const plaintext = Buffer.from(await optimizePlanet(original));
     const container = encryptContainer(plaintext, key);
 
     verifyContainer(container, plaintext, key);

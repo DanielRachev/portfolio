@@ -5,6 +5,7 @@ import {
   LoaderUtils,
 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'meshoptimizer/decoder';
 
 /* global __PLANET_KEY_PARTS__ */
 
@@ -101,6 +102,7 @@ class EncryptedGLTFLoader extends Loader {
         try {
           const plaintext = await decryptContainer(container);
           const gltfLoader = new GLTFLoader(this.manager);
+          gltfLoader.setMeshoptDecoder(MeshoptDecoder);
           const resourcePath = LoaderUtils.extractUrlBase(`${this.path || ''}${url}`);
 
           gltfLoader.parse(plaintext, resourcePath, onLoad, onError);
@@ -119,3 +121,4 @@ export function useEncryptedGLTF(path) {
 }
 
 useEncryptedGLTF.preload = (path) => useLoader.preload(EncryptedGLTFLoader, path);
+useEncryptedGLTF.clear = (path) => useLoader.clear(EncryptedGLTFLoader, path);
