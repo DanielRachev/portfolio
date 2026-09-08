@@ -1,6 +1,29 @@
 # Planet Portfolio
 
-An interactive React Three Fiber portfolio deployed to GitHub Pages.
+A scrolling portfolio with an optional React Three Fiber universe, configured
+for GitHub Pages.
+
+## Content and navigation
+
+Visitors first see Daniel's introduction, then selected work, experience,
+education, and contact information. `src/PortfolioPage.jsx` contains the page
+layout and identity copy, adapted from `design.html`; `src/Portfolio.css` contains
+its responsive styles. `src/App.jsx` manages scene loading and navigation.
+
+Edit projects, experience, and technical-stack groups in `src/content.js`. The project cards, planet
+previews, and detail panels all read the same records. Add `liveUrl` and/or
+`sourceUrl` only when a project has a destination ready to publish; absent links
+are omitted from the panel. The initial case studies are based on the CV and
+project documentation, without publishing workplace source files.
+
+The universe is imported after the introduction has had time to paint. Its entry
+button becomes available after the models have loaded and the scene has rendered.
+The canvas stops rendering while the written portfolio is visible. Loading errors
+or a 45-second preparation timeout leave the scrolling page usable.
+
+Entering the universe preserves the page's scroll position. Use the back button
+or Escape to return. When a project panel is open, Escape closes that panel first.
+Named project buttons also provide keyboard and touch access to every planet.
 
 ## Development
 

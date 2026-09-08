@@ -15,11 +15,7 @@ const focusableSelector = [
 
 function ProjectAction({ href, className, children }) {
   if (!href) {
-    return (
-      <span className={`${className} is-disabled`} aria-disabled="true">
-        {children}
-      </span>
-    );
+    return null;
   }
 
   return (
@@ -179,14 +175,14 @@ export default function ProjectPanel({ project, onClose }) {
 
           <p className="project-description">{project.description}</p>
 
-          <footer className="project-actions">
+          {(project.liveUrl || project.sourceUrl) && <footer className="project-actions">
             <ProjectAction href={project.liveUrl} className="project-action project-action--primary">
               View live <span aria-hidden="true">↗</span>
             </ProjectAction>
             <ProjectAction href={project.sourceUrl} className="project-action project-action--secondary">
               Source code
             </ProjectAction>
-          </footer>
+          </footer>}
         </div>
       </motion.aside>
     </>
