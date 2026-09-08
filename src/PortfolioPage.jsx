@@ -53,8 +53,10 @@ export default function PortfolioPage({ inactive, sceneStatus, entryRef, onEnter
           <div className="project-grid">
             {projects.map(project => (
               <article key={project.id} className="work-card">
-                <span className="work-card-number">{project.sequence}</span>
-                <h3><button className="work-card-button" onClick={() => onSelectProject(project)} aria-haspopup="dialog">{project.projectInfo}</button></h3>
+                <div className="work-card-heading">
+                  <h3><button className="work-card-button" onClick={() => onSelectProject(project)} aria-haspopup="dialog">{project.projectInfo}</button></h3>
+                  <span className="work-card-number">{project.sequence}</span>
+                </div>
                 <p className="work-card-summary">{project.summary}</p>
                 <ul className="work-card-stack" aria-label={`${project.projectInfo} technologies`}>
                   {project.technologies.map(technology => <li key={technology}>{technology}</li>)}

@@ -4,6 +4,7 @@ const assets = `${import.meta.env.BASE_URL}assets/planets`;
 export const projects = [
   {
     id: 1, sequence: '01', projectInfo: 'Distributed Checkout',
+    previewDescription: 'Coordinating checkout across services and failures.',
     category: 'Distributed systems', kind: 'University project', year: '2026',
     summary: 'Keeping orders, stock, and payments in sync—even when a service fails.',
     description: 'Implemented asynchronous checkout orchestration with two-phase commit and sagas across order, stock, and payment services. Added recovery workers, idempotent checkout handling, and tests for duplicate requests and compensation after failed payments.',
@@ -15,6 +16,7 @@ export const projects = [
   },
   {
     id: 2, sequence: '02', projectInfo: 'Modelling Chord',
+    previewDescription: 'Checking correctness in distributed ring routing.',
     category: 'Formal verification', kind: 'University research project', year: '2026',
     summary: 'Exploring what it takes for a distributed ring to find the right answer.',
     description: 'A research project modelling the Chord protocol in TLA+. The models describe lookup routing and node joins, with checks for lookup correctness, successor reachability, and eventual stabilisation after joins. The evaluation compares finger-table routing with successor-only baselines.',
@@ -26,6 +28,7 @@ export const projects = [
   },
   {
     id: 3, sequence: '03', projectInfo: 'Making Cost Visible',
+    previewDescription: 'Attributing infrastructure costs to product features.',
     category: 'Production engineering', kind: 'Booking.com internship', year: '2026',
     summary: 'Connecting resource usage to the features and teams behind it.',
     description: 'Built and deployed Java instrumentation attributing CPU time and heap allocation to business features in a shared pricing service. Extended coverage across execution paths with deterministic tests and safeguards against double counting. Developed Grafana dashboards and a cost model reporting resource use and estimated monthly infrastructure cost by feature and team.',
@@ -37,6 +40,7 @@ export const projects = [
   },
   {
     id: 4, sequence: '04', projectInfo: 'Aperture',
+    previewDescription: 'Collaborative coding in a remote IDE.',
     category: 'Developer tooling', kind: 'University project', year: '2025',
     summary: 'A shared workspace for building software, wherever the team is.',
     description: 'Developed role-specific views in a React/Tauri desktop client for a collaborative remote IDE prototype. The team prototype supported remote builds in Docker/Nix sessions and preserved both users’ edits in a two-client concurrent typing experiment.',

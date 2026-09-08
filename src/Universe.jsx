@@ -79,6 +79,7 @@ function PlanetMarker({
   category,
   projectInfo,
   technologies,
+  previewDescription,
 }) {
   const markerAnchorRef = useRef();
   const { camera, size } = useThree();
@@ -170,9 +171,7 @@ function PlanetMarker({
                       <li key={technology}>{technology}</li>
                     ))}
                   </ul>
-                  <span className="planet-marker__hint">
-                    Click to explore <span aria-hidden="true">&#8594;</span>
-                  </span>
+                  {previewDescription && <p className="planet-marker__description">{previewDescription}</p>}
                 </>
               )}
             </div>
@@ -197,6 +196,7 @@ const Planet = React.forwardRef(({
   technologies,
   accent,
   featured = false,
+  previewDescription,
 }, ref) => {
   const orbitAngle = useRef(Math.random() * Math.PI * 2);
   const visualRef = useRef();
@@ -316,6 +316,7 @@ const Planet = React.forwardRef(({
           category={category}
           projectInfo={projectInfo}
           technologies={technologies}
+          previewDescription={previewDescription}
         />
       )}
     </group>
@@ -555,10 +556,9 @@ export default function Universe({ active, ready, onReady, onExit, entryProjectI
       <div className="universe-content" inert={!!focusedPlanet}>
         <header className="universe-toolbar">
           <button ref={backRef} className="button button--glass" onClick={onExit}>← Back to portfolio</button>
-          <span>Daniel Rachev <span className="muted">/ Selected work</span></span>
         </header>
         <div className="universe-guide">
-          <p>Select a planet to explore my work.</p>
+          <p>Click or tap a planet to explore my work.</p>
           <span>Drag to orbit · Scroll to zoom</span>
           <nav aria-label="Select a project">
             {projects.map(project => <button key={project.id} onClick={() => handlePlanetClick(project.id)}>{project.projectInfo}</button>)}

@@ -138,22 +138,14 @@
   font-weight: 500;
 }
 
-.planet-marker__hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
+.planet-marker__description {
+  margin: 12px 0 0;
   padding-top: 10px;
-  color: rgba(224, 235, 252, 0.64);
   border-top: 1px solid rgba(210, 226, 250, 0.1);
+  color: rgba(224, 235, 252, 0.72);
   font-size: 0.63rem;
-  font-weight: 500;
-  letter-spacing: 0.035em;
-}
-
-.planet-marker__hint span {
-  color: var(--planet-accent);
-  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: normal;
 }
 
 @keyframes planet-marker-enter {
