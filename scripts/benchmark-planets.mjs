@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { draco } from '@gltf-transform/functions';
 import draco3d from 'draco3dgltf';
 import { planetIO, optimizePlanet } from './optimize-planets.mjs';
+import { planetAssets } from './planet-assets.mjs';
 
 planetIO.registerDependencies({
   'draco3d.encoder': await draco3d.createEncoderModule(),
@@ -19,7 +20,7 @@ const canonicalTriangles = array => {
   }
   return result;
 };
-for (const name of ['Planet_24.glb', 'Planet_30.glb', 'Planet_45.glb']) {
+for (const { source: name } of planetAssets) {
   const original = new Uint8Array(await readFile(new URL(`../private-assets/planets/${name}`, import.meta.url)));
   const meshopt = await optimizePlanet(original);
   const source = await planetIO.readBinary(original);

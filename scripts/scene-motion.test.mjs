@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PerspectiveCamera, Vector3, Quaternion } from 'three';
+import { projects } from '../src/content.js';
 import { initialOrbitAngle, orbitPosition, overviewPosition, smoothProgress, labelOpacity, RETURN_DURATION } from '../src/sceneMotion.js';
 
 test('orbit positions and future-project fallback angles are deterministic', () => {
@@ -17,9 +18,12 @@ test('composed opening positions fit desktop and narrow portrait views', () => {
     camera.position.set(...overviewPosition(aspect));
     camera.lookAt(0, 0, 0);
     camera.updateMatrixWorld();
-    for (const [radius, angle] of [[10, -1], [16, 1.85], [22, -2.5], [28, 2.95]]) {
-      const point = new Vector3(...orbitPosition(radius, angle)).project(camera);
-      assert.ok(Math.abs(point.x) < 0.9 && Math.abs(point.y) < 0.9);
+    for (const project of projects) {
+      const center = new Vector3(...orbitPosition(project.orbitalRadius, project.initialAngle));
+      for (const [x, y] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const point = center.clone().add(new Vector3(x, y, 0).applyQuaternion(camera.quaternion).multiplyScalar(project.visualRadius)).project(camera);
+        assert.ok(Math.abs(point.x) < 0.98 && Math.abs(point.y) < 0.9, `${project.projectInfo} fits at aspect ${aspect}`);
+      }
     }
   }
 });

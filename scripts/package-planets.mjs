@@ -13,6 +13,7 @@ import { constants } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { optimizePlanet } from './optimize-planets.mjs';
+import { planetAssets } from './planet-assets.mjs';
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -21,12 +22,6 @@ const repositoryRoot = path.resolve(
 const privateAssetDirectory = path.join(repositoryRoot, 'private-assets', 'planets');
 const outputDirectory = path.join(repositoryRoot, 'public', 'assets', 'planets');
 const keyPath = path.join(repositoryRoot, '.planet-key');
-
-const assets = [
-  { source: 'Planet_30.glb', output: 'p-c7b5e103.planet' },
-  { source: 'Planet_24.glb', output: 'p-a91f2d4c.planet' },
-  { source: 'Planet_45.glb', output: 'p-e48279ad.planet' },
-];
 
 const magic = Buffer.from('PLNT', 'ascii');
 const formatVersion = 1;
@@ -110,7 +105,7 @@ async function packageAssets() {
   const key = await loadOrCreateKey();
   await mkdir(outputDirectory, { recursive: true });
 
-  for (const asset of assets) {
+  for (const asset of planetAssets) {
     const sourcePath = path.join(privateAssetDirectory, asset.source);
     const outputPath = path.join(outputDirectory, asset.output);
     const original = await readFile(sourcePath);

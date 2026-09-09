@@ -14,7 +14,13 @@ Edit projects, experience, and technical-stack groups in `src/content.js`. The p
 previews, and detail panels all read the same records. Add `liveUrl` and/or
 `sourceUrl` only when a project has a destination ready to publish; absent links
 are omitted from the panel. The initial case studies are based on the CV and
-project documentation, without publishing workplace source files.
+project documentation, without publishing workplace source files. The collection
+has 12 projects. `featuredProjects` filters the four `featured: true` records for
+the written page: Resource & Cost Tracker (Booking.com), ResumAI, Distributed
+Checkout, and Aperture. All 12 appear in the universe; only featured planets have
+persistent rings and labels. The other eight, including Modelling Chord (ID 2),
+reveal labels on hover. A regular
+project gallery is not implemented yet. Omit unknown years rather than guessing.
 
 The universe is imported during an idle period after the introduction has painted.
 On data-saving or slow (2G/3G) connections it loads only when requested. Its entry
@@ -52,17 +58,16 @@ and is injected only into the development or minified production bundle.
 ## Licensed planet assets
 
 The original CGTrader GLBs are private source assets and must remain under
-`private-assets/planets/`, which is ignored by Git. Only the three active models
+`private-assets/planets/`, which is ignored by Git. Only the 12 active models
 are published. Packaging applies lossless Meshopt geometry compression before
 authenticated AES-256-GCM encryption into `.planet` containers. Three.js decrypts
 them in browser memory and uses the matching Meshopt decoder to parse them.
 The original GLBs are never overwritten; textures are not recompressed.
 
-Expected private source filenames:
-
-- `Planet_24.glb`
-- `Planet_30.glb`
-- `Planet_45.glb`
+The active source filenames and container names are listed in
+`scripts/planet-assets.mjs`, shared by packaging and benchmarking. Each project
+uses a distinct model. Update that manifest alongside `src/content.js` when
+adding or changing a planet.
 
 The other curated GLBs may remain in the same ignored directory for future use.
 
@@ -136,7 +141,7 @@ npm run assets:benchmark
 npm run build:report
 ```
 
-The benchmark reads the three private GLBs without changing them. It compares
+The benchmark reads the active private GLBs without changing them. It compares
 lossless Meshopt against Draco with 16-bit positions and 14-bit normals/UVs,
 checks Meshopt vertex data, triangle winding, and textures against the originals,
 and reports median warmed Node parsing times. These are not mobile browser or

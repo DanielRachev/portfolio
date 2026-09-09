@@ -621,7 +621,7 @@ export default function Universe({ active, ready, onReady, onError, onExit, entr
             {projects.map(project => <button key={project.id} onClick={() => handlePlanetClick(project.id)}>{project.projectInfo}</button>)}
           </nav>
         </div>
-      <Canvas frameloop={visible && (active || !ready) ? 'always' : 'never'} camera={{ position: [0, 20, 25], fov: 45 }} dpr={[1, quality.dpr]} fallback={<p>This browser cannot display the solar system. All projects are available in the portfolio.</p>}>
+      <Canvas frameloop={visible && (active || !ready) ? 'always' : 'never'} camera={{ position: [0, 20, 25], fov: 45 }} dpr={[1, quality.dpr]} fallback={<p>This browser cannot display the solar system. Featured projects are available in the portfolio.</p>}>
         <ScenePerformance active={active && visible} tier={tier} onQualityChange={setTier} onError={onError} />
         <Suspense fallback={null}>
         <hemisphereLight color="#b7d8ff" groundColor="#180b08" intensity={0.75} />
@@ -651,7 +651,7 @@ export default function Universe({ active, ready, onReady, onError, onExit, entr
             onPlanetHoverChange={handlePlanetHoverChange}
           />
         ))}
-        {projects.map(p => <Orbit key={`orbit_${p.id}`} radius={p.orbitalRadius} />)}
+        {[...new Set(projects.map(p => p.orbitalRadius))].map(radius => <Orbit key={radius} radius={radius} />)}
 
         {quality.bloomHeight > 0 && <EffectComposer multisampling={quality.multisampling}>
           <Bloom

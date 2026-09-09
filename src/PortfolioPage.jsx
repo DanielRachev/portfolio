@@ -1,5 +1,5 @@
 import { Orbit } from 'lucide-react';
-import { experience, projects, technicalStack } from './content';
+import { experience, featuredProjects, technicalStack } from './content';
 
 function OrbitIcon() {
   return <Orbit className="orbit-icon" size={20} aria-hidden="true" />;
@@ -29,7 +29,7 @@ export default function PortfolioPage({ inactive, sceneStatus, entryRef, onEnter
             <span>{entryLabel}</span>
           </button>
           <span className="sr-only" role="status">
-            {ready ? 'The solar system is ready to explore.' : sceneStatus === 'error' ? 'The scene could not load. Retry using the solar system button. All projects are available below.' : sceneStatus === 'idle' ? 'The solar system will load on request to save data.' : 'Preparing the solar system. You can read and scroll now.'}
+            {ready ? 'The solar system is ready to explore.' : sceneStatus === 'error' ? 'The scene could not load. Retry using the solar system button. Featured projects are available below.' : sceneStatus === 'idle' ? 'The solar system will load on request to save data.' : 'Preparing the solar system. You can read and scroll now.'}
           </span>
         </div>
       </header>
@@ -45,14 +45,14 @@ export default function PortfolioPage({ inactive, sceneStatus, entryRef, onEnter
             <a className="button button--secondary" href="https://github.com/DanielRachev" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
             <a className="text-link" href="#work">Browse projects <span aria-hidden="true">↓</span></a>
           </div>
-          {sceneStatus === 'error' && <p className="scene-note">The solar system couldn’t load this time. You can retry above or explore all my projects below.</p>}
+          {sceneStatus === 'error' && <p className="scene-note">The solar system couldn’t load this time. You can retry above or explore my featured projects below.</p>}
           {sceneStatus === 'idle' && <p className="scene-note">To save data, the solar system loads only when you request it.</p>}
         </section>
 
         <section id="work" className="work-section" aria-labelledby="work-title">
           <h2 id="work-title">Featured Work</h2>
           <div className="project-grid">
-            {projects.map(project => (
+            {featuredProjects.map(project => (
               <article key={project.id} className="work-card">
                 <div className="work-card-heading">
                   <h3><button className="work-card-button" onClick={() => onSelectProject(project)} aria-haspopup="dialog">{project.projectInfo}</button></h3>

@@ -169,10 +169,10 @@ export default function ProjectPanel({ project, onClose }) {
               <dt>Role</dt>
               <dd>{project.role}</dd>
             </div>
-            <div>
+            {project.year && <div>
               <dt>Year</dt>
               <dd>{project.year}</dd>
-            </div>
+            </div>}
           </dl>
 
           <p className="project-description">{project.description}</p>

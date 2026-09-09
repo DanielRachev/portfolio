@@ -162,6 +162,8 @@
   .universe-toolbar { top: 12px; left: 12px; right: 12px; }
   .universe-guide { bottom: 14px; left: 12px; right: 12px; }
   .universe-guide p { font-size: 16px; }
+  .universe-guide nav { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; pointer-events: auto; padding-bottom: 4px; }
+  .universe-guide nav button { flex: 0 0 auto; }
   .universe-guide button { font-size: 10px; padding: 8px 10px; }
 }
 @media (max-width: 350px) {
